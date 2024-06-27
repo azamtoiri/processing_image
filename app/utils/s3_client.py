@@ -8,7 +8,6 @@ import aiofiles
 from aiobotocore.config import AioConfig
 from aiobotocore.session import get_session
 from botocore.exceptions import ClientError
-from container import settings
 from loguru import logger
 from types_aiobotocore_s3.client import S3Client as S3ClientType
 
@@ -169,25 +168,26 @@ class S3Client:
 
 async def main():
     # Example usage:
-    s3_client = S3Client(
-        access_key=settings.selectel.access_key,
-        secret_key=settings.selectel.secret_key,
-        endpoint_url=settings.selectel.endpoint_url,
-        bucket_name=settings.selectel.bucket_name,
-    )
-    obj = await s3_client.upload_file(
-        r"")
-    print(obj)
+    # s3_client = S3Client(
+    #     access_key=settings.selectel.access_key,
+    #     secret_key=settings.selectel.secret_key,
+    #     endpoint_url=settings.selectel.endpoint_url,
+    #     bucket_name=settings.selectel.bucket_name,
+    # )
+    # obj = await s3_client.upload_file(
+    #     r"")
+    # print(obj)
     # uploading file to s3 storage
     # list_1 = await s3_client.get_all_object()
     # print(list_1)
     # name_ob = list_1[0]
     # await s3_client.delete_file(object_name=name_ob)
     # object = await s3_client.upload_file(object_name=name_ob)
-    key = await s3_client.generate_presigned_url(key=obj)
-    print(key)
+    # key = await s3_client.generate_presigned_url(key=obj)
+    # print(key)
     # print(key)
     # await s3_client.download_file(object_name="#33. Операции над множествами, сравнение множеств _ Python для начинающих.mp4",destination_path=r"D:\projects\AIPO_V2\insighter_worker\downloaded_file.mp4")
+    ...
 
 
 if __name__ == "__main__":

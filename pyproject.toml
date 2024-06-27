@@ -11,6 +11,10 @@ sqlalchemy = "^2.0.31"
 celery = "^5.4.0"
 fastapi = "^0.111.0"
 pillow = "^10.3.0"
+loguru = "^0.7.2"
+types-aiobotocore = {extras = ["essential"], version = "^2.13.1"}
+aiobotocore = "^2.13.1"
+aiofiles = "^24.1.0"
 
 
 [build-system]

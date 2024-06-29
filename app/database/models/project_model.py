@@ -4,7 +4,7 @@ from app.database.models.base_model import ModelBase
 
 
 class Project(ModelBase):
-    __tablename__ = 'currencies'
+    __tablename__ = 'projects'
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)

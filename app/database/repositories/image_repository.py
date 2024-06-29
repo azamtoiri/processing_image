@@ -4,7 +4,6 @@ from typing import Optional, List
 from sqlalchemy import select
 
 from app.database.models.image_model import Image
-# from app.database.models..asssistant import AIAssistant as AIAssistantModel
 from app.database.repositories.base_repository import BaseRepository
 
 

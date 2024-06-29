@@ -1,9 +1,11 @@
 from celery import Celery
 
+from app.utils.config import Connection
+
 celery_app = Celery(
     "tasks",
-    broker="redis://localhost:6379/0",  # Брокер сообщений (например, Redis)
-    backend="redis://localhost:6379/1"  # Бэкенд для хранения результатов задач (например, Redis)
+    broker=Connection.CELERY_BROKER_URL,
+    backend=Connection.CELERY_RESULT_BACKEND
 )
 
 celery_app.conf.update(
@@ -13,3 +15,5 @@ celery_app.conf.update(
     timezone='UTC',
     enable_utc=True,
 )
+
+import app.tasks

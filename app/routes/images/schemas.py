@@ -1,4 +1,10 @@
+from fastapi import UploadFile
 from pydantic import BaseModel
+
+
+class ImageUpload(BaseModel):
+    project_id: int
+    image: UploadFile
 
 
 class ImageUploadResponse(BaseModel):
@@ -14,3 +20,8 @@ class ProjectDetails(BaseModel):
     id: int
     name: str
     description: str
+
+
+class Image(BaseModel):
+    id: int
+    url: str

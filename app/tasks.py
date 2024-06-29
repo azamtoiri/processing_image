@@ -1,10 +1,11 @@
+import asyncio
+import time
+
 from celery.utils.log import get_task_logger
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 from app.celery_app import celery_app
-from app.database.models.image_model import \
-    Image as ImageModel  # предположим, что модели данных определены в этом модуле
+from app.database.engine.session_maker import DatabaseSessionManager
+from app.database.models.image_model import Image as ImageModel
 from app.processing.image_process import resize_image
 from app.utils.config import S3Connection, Connection
 from app.utils.s3_client import S3Client
@@ -12,8 +13,7 @@ from app.utils.s3_client import S3Client
 logger = get_task_logger(__name__)
 
 # Конфигурация подключения к базе данных
-engine = create_async_engine(f'{Connection.DATABASE_URL}/{Connection.DATABASE}')
-async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+database_session = DatabaseSessionManager(f'{Connection.DATABASE_URL}/{Connection.DATABASE}')
 
 # Конфигурация подключения к S3
 s3_client = S3Client(
@@ -22,11 +22,26 @@ s3_client = S3Client(
     bucket_name=S3Connection.BUCKET_NAME
 )
 
-S3_BUCKET_NAME = "your-s3-bucket-name"
+
+async def async_update_image_status(image_id, status, versions=None):
+    async with database_session.session_scope() as session:
+        async with session.begin():
+            image = await session.get(ImageModel, image_id)
+            if image:
+                image.status = status
+                if versions:
+                    image.versions = versions
+                await session.commit()
 
 
 @celery_app.task(name="tasks.process_image_task")
-async def process_image_task(image_id, image_data):
+def test_process_image(image_id):
+    time.sleep(int(image_id) * 10)
+    return True
+
+
+@celery_app.task(name="tasks.process_image_task")
+def process_image_task(image_id, image_data):
     sizes = {
         "thumb": (150, 120),
         "big_thumb": (700, 700),
@@ -34,28 +49,21 @@ async def process_image_task(image_id, image_data):
         "d2500": (2500, 2500)
     }
 
-    async def update_image_status(image_id, status, versions=None):
-        async with async_session() as session:
-            async with session.begin():
-                image = await session.get(ImageModel, image_id)
-                if image:
-                    image.status = status
-                    if versions:
-                        image.versions = versions
-                    await session.commit()
+    async def process():
+        try:
+            # Обработка изображений
+            versions = {}
+            for version, size in sizes.items():
+                resized_image = resize_image(image_data, size)
+                s3_key = f"images/{image_id}/{version}.jpg"
+                await s3_client.upload_file(file_path=resized_image)
+                versions[version] = s3_key
 
-    try:
-        # Обработка изображений
-        versions = {}
-        for version, size in sizes.items():
-            resized_image = resize_image(image_data, size)
-            s3_key = f"images/{image_id}/{version}.jpg"
-            await s3_client.upload_file(file_path=resized_image)
-            versions[version] = s3_key
+            # Обновление статуса изображения в базе данных
+            await async_update_image_status(image_id, "done", versions)
 
-        # Обновление статуса изображения в базе данных
-        await update_image_status(image_id, "done", versions)
+        except Exception as e:
+            logger.error(f"Error processing image {image_id}: {e}")
+            await async_update_image_status(image_id, "error")
 
-    except Exception as e:
-        logger.error(f"Error processing image {image_id}: {e}")
-        await update_image_status(image_id, "error")
+    asyncio.run(process())

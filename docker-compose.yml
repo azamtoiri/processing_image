@@ -2,11 +2,14 @@ version: '3.8'
 
 services:
   web:
-    image: tiangolo/uvicorn-gunicorn-fastapi:python3.8
+    build: .
+    command: python app/main.py
     volumes:
       - .:/app
     ports:
-      - "8000:80"
+      - "8000:8080"
+    env_file:
+      - .docker_env
     depends_on:
       - db
       - redis
@@ -14,23 +17,26 @@ services:
   db:
     image: postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: dbname
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: process_image
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis
 
   celery_worker:
     build: .
-    command: celery -A app.tasks worker --loglevel=info
+    command: celery -A app.celery_app worker --loglevel=info
     volumes:
       - .:/app
+    env_file:
+      - .docker_env
     depends_on:
       - redis
       - db
+
+  redis:
+    image: redis
 
 volumes:
   postgres_data:

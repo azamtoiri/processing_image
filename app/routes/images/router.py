@@ -1,17 +1,22 @@
+import json
+
+import requests
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, UploadFile, Body
-from fastapi.exceptions import HTTPException
+from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.engine.session_maker import DatabaseSessionManager
-from app.database.models import Image
+from app.database.models import Image, Project
 from app.routes.images import schemas
 from app.routes.websocket import router as websocket_router
-from app.tasks import process_image_task, test_process_image
+from app.tasks import process_image_task
+from app.utils.client import get_s3_client
 from app.utils.config import Connection
 
 router = APIRouter()
+s3_client = get_s3_client()
 
 
 # Зависимость для получения асинхронной сессии БД
@@ -21,37 +26,55 @@ async def get_db():
         yield db_session
 
 
-@router.post("/tasks", status_code=201)
-def run_task(payload=Body(...)):
-    task_type = payload["type"]
-    task = test_process_image.delay(int(task_type))
-    return JSONResponse({"task_id": task.id})
-
-
 # Загрузка изображения и инициализация задачи Celery
-@router.post("/", response_model=schemas.ImageUpload)
-async def upload_image(file: UploadFile, project_id: int = None, db: AsyncSession = Depends(get_db)):
-    # Здесь нужно сохранить изображение в S3 и получить URL
-    if file.content_type not in ["image/jpeg", "image/png"]:
-        raise HTTPException(status_code=400, detail="Invalid image format. Only JPEG and PNG are supported.")
+@router.post("/", response_model=schemas.ImageUpload, status_code=201)
+async def upload_image(filename: str, project_id: int, db: AsyncSession = Depends(get_db)):
+    response = await s3_client.generate_presigned_post(filename)
 
-    # Например, можно использовать boto3 для работы с S3
+    db_project = await db.get(Project, project_id)
+    if not db_project:
+        # Если проект не существует, создаем новый
+        db_project = Project(id=project_id, name=project_id)  # Здесь может быть логика для создания имени проекта
+        db.add(db_project)
+        await db.commit()
+        await db.refresh(db_project)
 
-    # Создаем запись о загрузке изображения в базе данных
+    url = response['url']
+    url = url.split('//')[1]
+    return JSONResponse(
+        {"upload_link": f"http://localhost:8000/images/upload/{url}{project_id}", "params": response.get('fields')})
+
+
+@router.post("/upload/{s3_url}/{project_id}", status_code=201)
+async def upload_image(
+        s3_url: str, file: UploadFile = UploadFile(...), data=Body(...),
+        db: AsyncSession = Depends(get_db), project_id: int = int
+):
+    image_data = await file.read()
+    if file.filename:
+        if file.content_type not in ["image/jpeg", "image/png"]:
+            raise HTTPException(status_code=400, detail="Invalid image format. Only JPEG and PNG are supported.")
+    try:
+        files = {'file': (file.filename, image_data)}
+        data_dict = json.loads(data)
+        http_response = requests.post(f'https://{s3_url}', data=data_dict, files=files)
+
+    except Exception as err:
+        print(err)
+
     db_image = Image(filename=file.filename, project_id=project_id, status="uploaded")
     db.add(db_image)
     await db.commit()
     await db.refresh(db_image)
 
     # Запуск задачи Celery для обработки изображения
-    image_data = await file.read()
-    process_task = process_image_task.delay(db_image.id, image_data)
+    result = process_image_task.delay(db_image.id, image_data)
 
-    return JSONResponse({"process_id": process_task.id})
+    return JSONResponse({"process_id": result.id})
 
 
-@router.get("/tasks/{task_id}")
-def get_status(task_id):
+@router.get("/tasks/{task_id}", status_code=200)
+async def get_status(task_id):
     task_result = AsyncResult(task_id)
     result = {
         "task_id": task_id,

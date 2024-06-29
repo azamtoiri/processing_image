@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Example</title>
+    <script>
+        var socket = new WebSocket("ws://localhost:8000/ws/1");
+
+        socket.onmessage = function(event) {
+            var message = JSON.parse(event.data);
+            console.log("Received message:", message);
+            // Действия при получении сообщения о завершении обработки изображения
+            if (message.event === "image_processed") {
+                alert(`Image ${message.image_id} processed successfully!`);
+            }
+        };
+
+        socket.onclose = function(event) {
+            if (event.wasClean) {
+                console.log(`Closed cleanly, code=${event.code}, reason=${event.reason}`);
+            } else {
+                console.error('Connection died');
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket Error:', error);
+        };
+    </script>
+</head>
+<body>
+    <h1>WebSocket Example</h1>
+    <p>Open developer console to see WebSocket messages.</p>
+</body>
+</html>

@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func, Text
+from sqlalchemy.orm import relationship
 
 from app.database.models.base_model import ModelBase
 
@@ -7,10 +8,14 @@ class Image(ModelBase):
     __tablename__ = 'images'
 
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, nullable=False)
-    project_id = Column(Integer, nullable=False)
-    status = Column(String, nullable=False)
-    versions = Column(JSON, nullable=False, default={})
+    filename = Column(String(255), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    status = Column(String(50), nullable=False)
+    created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    project = relationship("Project", back_populates="images")
+    versions = relationship("ImageVersion", back_populates="image")
 
     def to_dict(self):
         return {
@@ -19,3 +24,14 @@ class Image(ModelBase):
             'project_id': self.project_id,
             'status': self.status
         }
+
+
+class ImageVersion(ModelBase):
+    __tablename__ = "image_versions"
+
+    version_id = Column(Integer, primary_key=True, index=True)
+    image_id = Column(Integer, ForeignKey("images.id"))
+    type = Column(String(50), nullable=False)
+    url = Column(Text, nullable=False)
+
+    image = relationship("Image", back_populates="versions")

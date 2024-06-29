@@ -1,48 +1,33 @@
 import asyncio
-import time
 
 from celery.utils.log import get_task_logger
 
 from app.celery_app import celery_app
 from app.database.engine.session_maker import DatabaseSessionManager
-from app.database.models.image_model import Image as ImageModel
+from app.database.models.image_model import Image as ImageModel, ImageVersion
+from app.database.repositories.image_repository import ImageRepository
 from app.processing.image_process import resize_image
-from app.utils.config import S3Connection, Connection
-from app.utils.s3_client import S3Client
+from app.utils.client import get_s3_client
+from app.utils.config import Connection
+from app.utils.image_size import get_image_size
 
 logger = get_task_logger(__name__)
 
-# Конфигурация подключения к базе данных
-database_session = DatabaseSessionManager(f'{Connection.DATABASE_URL}/{Connection.DATABASE}')
+# Database connection configuration
+database_url = f'{Connection.DATABASE_URL}/{Connection.DATABASE}'
+database_session = DatabaseSessionManager(database_url=database_url)
 
-# Конфигурация подключения к S3
-s3_client = S3Client(
-    access_key=S3Connection.ACCESS_KEY,
-    secret_key=S3Connection.SECRET_KEY,
-    bucket_name=S3Connection.BUCKET_NAME
-)
+# S3 client configuration
+s3_client = get_s3_client()
 
 
-async def async_update_image_status(image_id, status, versions=None):
-    async with database_session.session_scope() as session:
-        async with session.begin():
-            image = await session.get(ImageModel, image_id)
-            if image:
-                image.status = status
-                if versions:
-                    image.versions = versions
-                await session.commit()
-
-
-@celery_app.task(name="tasks.process_image_task")
-def test_process_image(image_id):
-    time.sleep(int(image_id) * 10)
-    return True
-
-
+# Celery task for processing image
 @celery_app.task(name="tasks.process_image_task")
 def process_image_task(image_id, image_data):
+    original_size = get_image_size(image_data)
+    repo = ImageRepository(db_session_manager=database_session)
     sizes = {
+        "original": original_size,
         "thumb": (150, 120),
         "big_thumb": (700, 700),
         "big_1920": (1920, 1080),
@@ -52,18 +37,33 @@ def process_image_task(image_id, image_data):
     async def process():
         try:
             # Обработка изображений
-            versions = {}
-            for version, size in sizes.items():
-                resized_image = resize_image(image_data, size)
-                s3_key = f"images/{image_id}/{version}.jpg"
-                await s3_client.upload_file(file_path=resized_image)
-                versions[version] = s3_key
+            original_s3_url = None
 
-            # Обновление статуса изображения в базе данных
-            await async_update_image_status(image_id, "done", versions)
+            async with database_session.session_scope() as session:
+                db_image = await session.get(ImageModel, image_id)
+                if not db_image:
+                    raise Exception(f"Image with id {image_id} not found in database")
+
+                for version, size in sizes.items():
+                    if version == "original":
+                        s3_key = f"images/{image_id}/{version}.jpg"
+                        await s3_client.upload_binary(object_data=image_data, object_name=s3_key)
+
+                    resized_image = resize_image(image_data, size)
+                    s3_key = f"images/{image_id}/{version}.jpg"
+                    print(s3_key)
+                    await s3_client.upload_binary(object_data=resized_image, object_name=s3_key)
+                    await repo.update_image_version(image_id, version, s3_key)
+
+                await repo.update_image_status(image_id, "done")
+                # await websocket_endpoint.notify_image_ready(image_id, 11)
+
+                return True
 
         except Exception as e:
             logger.error(f"Error processing image {image_id}: {e}")
-            await async_update_image_status(image_id, "error")
+            await repo.update_image_status(image_id, "error")
+            return False
 
-    asyncio.run(process())
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(process())

@@ -1,4 +1,8 @@
+from typing import List
+
 from pydantic import BaseModel
+
+from app.routes.images.schemas import ImageInfo
 
 
 class ProjectCreate(BaseModel):
@@ -13,3 +17,7 @@ class ProjectDetails(BaseModel):
     source: str
     owner: str
     details: str
+
+
+class ProjectImagesResponse(BaseModel):
+    images: List[ImageInfo]

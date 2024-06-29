@@ -16,3 +16,10 @@ class S3Connection:
     ACCESS_KEY = os.getenv("ACCESS_KEY")
     SECRET_KEY = os.getenv("SECRET_KEY")
     BUCKET_NAME = os.getenv("BUCKET_NAME")
+
+
+if __name__ == '__main__':
+    print(f"""
+Database_URL = {Connection.DATABASE_URL}
+DATABSE = {Connection.DATABASE}
+    """)

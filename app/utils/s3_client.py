@@ -5,11 +5,14 @@ from pathlib import Path
 from typing import Optional
 
 import aiofiles
+import requests
 from aiobotocore.config import AioConfig
 from aiobotocore.session import get_session
 from botocore.exceptions import ClientError
 from loguru import logger
 from types_aiobotocore_s3.client import S3Client as S3ClientType
+
+from app.utils.config import S3Connection
 
 
 class S3Client:
@@ -165,29 +168,45 @@ class S3Client:
         except Exception as err:
             print(err)
 
+    async def upload_binary(self, object_data, object_name):
+        """Save binary to s3"""
+        try:
+            async with self.get_client() as client:
+                client: S3ClientType
+                response = await client.put_object(Bucket=self.bucket_name, Key=object_name, Body=object_data)
+                return response
+        except Exception as err:
+            print(err)
+
+    async def generate_presigned_post(self, object_name) -> dict:
+        try:
+            async with self.get_client() as client:
+                client: S3ClientType
+                response = await client.generate_presigned_post(Bucket=self.bucket_name, Key=object_name)
+                return response
+        except Exception as err:
+            print(err)
+
 
 async def main():
     # Example usage:
-    # s3_client = S3Client(
-    #     access_key=settings.selectel.access_key,
-    #     secret_key=settings.selectel.secret_key,
-    #     endpoint_url=settings.selectel.endpoint_url,
-    #     bucket_name=settings.selectel.bucket_name,
-    # )
-    # obj = await s3_client.upload_file(
-    #     r"")
-    # print(obj)
-    # uploading file to s3 storage
-    # list_1 = await s3_client.get_all_object()
-    # print(list_1)
-    # name_ob = list_1[0]
-    # await s3_client.delete_file(object_name=name_ob)
-    # object = await s3_client.upload_file(object_name=name_ob)
-    # key = await s3_client.generate_presigned_url(key=obj)
-    # print(key)
-    # print(key)
-    # await s3_client.download_file(object_name="#33. Операции над множествами, сравнение множеств _ Python для начинающих.mp4",destination_path=r"D:\projects\AIPO_V2\insighter_worker\downloaded_file.mp4")
-    ...
+    s3_client = S3Client(
+        access_key=S3Connection.ACCESS_KEY,
+        secret_key=S3Connection.SECRET_KEY,
+        bucket_name=S3Connection.BUCKET_NAME,
+    )
+    object_name = 'new_imag.jpg'
+    async with s3_client.get_client() as client:
+        client: S3ClientType
+        response = await client.generate_presigned_post(s3_client.bucket_name, Key=object_name)
+        url = response['url']
+        fields = response['fields']
+
+        with open('new_image.jpg', 'rb') as f:
+            files = {'file': (object_name, f)}
+            http_response = requests.post(url, data=fields, files=files)
+            print(http_response.request)
+            print(f'{url} data={files} files={files}')
 
 
 if __name__ == "__main__":

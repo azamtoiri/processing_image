@@ -6,7 +6,6 @@ from typing import Any
 from dotenv import load_dotenv
 
 from src.database.engine.session_maker import DatabaseSessionManager
-from src.database.models import Project
 from src.database.repositories.storage_container import Repositories
 
 load_dotenv()
@@ -58,5 +57,6 @@ if __name__ == '__main__':
             await components.repositories_com.project_repository.save(6)
         else:
             print("Нет не Добавили новый")
+
 
     asyncio.run(main())

@@ -15,7 +15,4 @@ def get_image_size(image_data) -> tuple:
     """
     with Image.open(BytesIO(image_data)) as img:
         width, height = img.size
-        print("image original", width, height)
         return width, height
-
-

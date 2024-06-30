@@ -4,10 +4,10 @@ from celery.utils.log import get_task_logger
 
 from src.celery_app import celery_app
 from src.processing.image_process import resize_image
+from src.routes.images import schemas
 from src.utils.client import get_s3_client
 from src.utils.config import components, S3Connection
 from src.utils.image_size import get_image_size
-from src.routes.images import schemas
 
 logger = get_task_logger(__name__)
 

@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, String, CHAR, TIMESTAMP, func
+from sqlalchemy import Column, Integer, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 
 from src.database.models.base_model import ModelBase
-from src.database.models.image_model import Image
 
 
 class Project(ModelBase):

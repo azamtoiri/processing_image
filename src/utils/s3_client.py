@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional
 
 import aiofiles
-import requests
 from aiobotocore.config import AioConfig
 from aiobotocore.session import get_session
 from botocore.exceptions import ClientError
@@ -195,7 +194,6 @@ class S3Client:
                 return response
         except Exception as err:
             print(err)
-
 
 
 async def main():

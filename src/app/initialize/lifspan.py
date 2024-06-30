@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Запущен инициализатор при сервере")
     FastAPICache.init(Connection.CELERY_BROKER_URL, prefix="fastapi-cache")
     connection = await get_redis_connection()
-    app.state.redis_connection = connection
+    app.redis_connection = connection
     yield
     # закрыть подключение к брокеру
     await connection.close()

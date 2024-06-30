@@ -1,5 +1,4 @@
 import json
-import logging
 
 import requests
 from fastapi import APIRouter, Depends, UploadFile, Body
@@ -67,16 +66,14 @@ async def upload_image(
         http_response = requests.post(f'https://{s3_url}', data=data_dict, files=files)
 
         # save image to db
-
         db_image = await request.app.repositories.image_repository.save(
             filename=file.filename, project_id=project_id,
             state=schemas.ImageState.uploaded
         )
-        print(db_image.id)
 
         # Запуск задачи Celery для обработки изображения
         result = process_image_task.delay(image_id=db_image.id, image_data=image_data, project_id=project_id)
-        return JSONResponse({"process_id": result.id})
+        return JSONResponse({"success": True})
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Initial server error: {err}")
 

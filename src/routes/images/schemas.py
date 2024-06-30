@@ -1,7 +1,6 @@
 from enum import Enum
-from typing import Optional
+from typing import List
 
-from fastapi import UploadFile
 from pydantic import BaseModel
 
 
@@ -15,17 +14,17 @@ class ImageState(str, Enum):
 
 class ImageVersion(BaseModel):
     original: str = None
-    thumb: str = (150, 120)
-    big_thumb: str = (700, 700)
-    big_1920: str = (1920, 1080)
-    d2500: str = (2500, 2500)
+    thumb: str
+    big_thumb: str
+    big_1920: str
+    d2500: str
 
 
 class ImageInfo(BaseModel):
-    image_id: str
+    image_id: int
     state: ImageState = ImageState.init
-    project_id: str
-    versions: ImageVersion
+    project_id: int
+    versions: List[ImageVersion]
 
 
 class ImageUpload(BaseModel):

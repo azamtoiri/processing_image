@@ -1,14 +1,13 @@
 import json
+import logging
 
 import requests
-from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, UploadFile, Body
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.engine.session_maker import DatabaseSessionManager
-from src.database.models import Image, Project
 from src.routes.images import schemas
 from src.routes.websocket import router as websocket_router
 from src.tasks import process_image_task
@@ -26,19 +25,15 @@ async def get_db():
         yield db_session
 
 
-# Загрузка изображения и инициализация задачи Celery
 @router.post("/", response_model=schemas.ImageUpload, status_code=201)
-async def upload_image(request: Request, filename: str, project_id: int, db: AsyncSession = Depends(get_db)):
+async def upload_image(request: Request, filename: str, project_id: int):
     try:
         response = await s3_client.generate_presigned_post(filename)
 
-        db_project = await db.get(Project, project_id)
+        db_project = await request.app.repositories.project_repository.get_project(id=project_id)
         if not db_project:
             # Если проект не существует, создаем новый
-            db_project = Project(id=project_id, name=project_id)  # Здесь может быть логика для создания имени проекта
-            db.add(db_project)
-            await db.commit()
-            await db.refresh(db_project)
+            db_project = await request.app.repositories.project_repository.save(id=project_id)
 
         # generate url
         url = response['url']
@@ -46,7 +41,7 @@ async def upload_image(request: Request, filename: str, project_id: int, db: Asy
 
         # generate params
         params = response.get('fields')
-        params['project_id'] = project_id
+        params['project_id'] = db_project.id
 
         return JSONResponse(
             {"upload_link": f"http://localhost:8000/images/upload/{url}", "params": params})
@@ -72,15 +67,18 @@ async def upload_image(
         http_response = requests.post(f'https://{s3_url}', data=data_dict, files=files)
 
         # save image to db
-        db_image = Image(filename=file.filename, project_id=project_id, status="uploaded")
-        db.add(db_image)
-        await db.commit()
-        await db.refresh(db_image)
+
+        db_image = await request.app.repositories.image_repository.save(
+            filename=file.filename, project_id=project_id,
+            state=schemas.ImageState.uploaded
+        )
+        print(db_image.id)
 
         # Запуск задачи Celery для обработки изображения
         result = process_image_task.delay(image_id=db_image.id, image_data=image_data, project_id=project_id)
         return JSONResponse({"process_id": result.id})
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Initial server error: {err}")
+
 
 router.include_router(websocket_router)

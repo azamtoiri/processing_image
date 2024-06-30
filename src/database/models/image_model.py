@@ -10,7 +10,7 @@ class Image(ModelBase):
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String(255), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"))
-    status = Column(String(50), nullable=False)
+    state = Column(String(50))
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
 
@@ -22,7 +22,7 @@ class Image(ModelBase):
             'id': self.id,
             'filename': self.filename,
             'project_id': self.project_id,
-            'status': self.status
+            'status': self.state
         }
 
 

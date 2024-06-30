@@ -9,7 +9,6 @@ class Project(ModelBase):
     __tablename__ = "projects"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(Integer, nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
 
     images = relationship("Image", back_populates="project")
@@ -17,6 +16,5 @@ class Project(ModelBase):
     def to_dict(self):
         return {
             'id': self.id,
-            'name': self.name,
-            'code': self.code
+            'name': self.created_at,
         }

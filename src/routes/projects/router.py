@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from fastapi import APIRouter, HTTPException, Request
 
-from src.database import models
 from src.database.engine.session_maker import DatabaseSessionManager
+from src.routes.images import schemas as image_schema
 from src.utils.config import Connection
 from . import schemas
 
@@ -19,28 +16,30 @@ async def get_db():
 
 
 # Получение изображений по проекту
-@router.get("/{id}/images")
-async def get_project_images(id: int, db: AsyncSession = Depends(get_db)):
-    query = (
-        select(models.Image)
-        .filter_by(project_id=id)
-        .options(
-            selectinload(models.Image.versions)  # Загрузка связанных версий изображений
-        )
-    )
-    execution = await db.execute(query)
-    images = execution.scalars().all()
+@router.get("/{project_id}/images")
+async def get_project_images(request: Request, project_id: int):
+    images = await request.app.repositories.project_repository.get_project_images(project_id=project_id)
+
     if not images:
-        raise HTTPException(status_code=404, detail=f'Проекта {id} не существует')
+        raise HTTPException(status_code=404, detail=f'Проекта {project_id} не существует')
 
-    response_images = []
-    for image in images:
-        response_image = {
-            "image_id": image.id,
-            "state": image.status,
-            "project_id": image.project_id,
-            "versions": image.versions
-        }
-        response_images.append(response_image)
+    # Construct the response model
+    response = schemas.ProjectImagesResponse(images=[
+        schemas.ImageInfo(
+            image_id=image["image_id"],
+            state=image["state"],
+            project_id=image["project_id"],
+            versions=[
+                image_schema.ImageVersion(
+                    original=image.get('versions').get('original'),
+                    thumb=image.get('versions').get('original'),
+                    big_thumb=image.get('versions').get('original'),
+                    big_1920=image.get('versions').get('original'),
+                    d2500=image.get('versions').get('original')
+                )
+            ]
+        )
+        for image in images
+    ])
 
-    return {"images": response_images}
+    return response

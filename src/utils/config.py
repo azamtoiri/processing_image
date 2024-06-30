@@ -1,3 +1,4 @@
+import asyncio
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -5,6 +6,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from src.database.engine.session_maker import DatabaseSessionManager
+from src.database.models import Project
 from src.database.repositories.storage_container import Repositories
 
 load_dotenv()
@@ -48,8 +50,13 @@ def get_components(settings) -> SystemComponents:
 components = get_components(settings=Connection)
 
 if __name__ == '__main__':
-    print(components.repositories_com.image_repository)
-    print(f"""
-Database_URL = {Connection.DATABASE_URL}
-DATABSE = {Connection.DATABASE}
-    """)
+    async def main():
+        db_project = await components.repositories_com.project_repository.get_project(id=6)
+        if not db_project:
+            print("Нет добавлаяем")
+            # Если проект не существует, создаем новый
+            await components.repositories_com.project_repository.save(6)
+        else:
+            print("Нет не Добавили новый")
+
+    asyncio.run(main())

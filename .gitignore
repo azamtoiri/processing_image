@@ -5,6 +5,8 @@ tailwindcss/
 *.json
 *.log
 *.pot
+*.jpg
+*.png
 *.pyc
 __pycache__/
 local_settings.py

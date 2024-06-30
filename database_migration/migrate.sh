@@ -7,4 +7,4 @@
 # Применение миграций
 alembic upgrade head
 
-python app/main.py
+python src/app/server_app_run.py

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, func, Text
 from sqlalchemy.orm import relationship
 
-from app.database.models.base_model import ModelBase
+from src.database.models.base_model import ModelBase
 
 
 class Image(ModelBase):

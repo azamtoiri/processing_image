@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database import models
-from app.database.engine.session_maker import DatabaseSessionManager
-from app.utils.config import Connection
+from src.database import models
+from src.database.engine.session_maker import DatabaseSessionManager
+from src.utils.config import Connection
 from . import schemas
 
 router = APIRouter()
@@ -30,7 +30,8 @@ async def get_project_images(id: int, db: AsyncSession = Depends(get_db)):
     )
     execution = await db.execute(query)
     images = execution.scalars().all()
-    print(images)
+    if not images:
+        raise HTTPException(status_code=404, detail=f'Проекта {id} не существует')
 
     response_images = []
     for image in images:
@@ -38,13 +39,7 @@ async def get_project_images(id: int, db: AsyncSession = Depends(get_db)):
             "image_id": image.id,
             "state": image.status,
             "project_id": image.project_id,
-            "versions": {
-                "original": image.versions,
-                "thumb": image.versions,
-                "big_thumb": image.versions,
-                "big_1920": image.versions,
-                "d2500": image.versions
-            }
+            "versions": image.versions
         }
         response_images.append(response_image)
 

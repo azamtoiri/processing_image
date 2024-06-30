@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 from loguru import logger
 from types_aiobotocore_s3.client import S3Client as S3ClientType
 
-from app.utils.config import S3Connection
+from src.utils.config import S3Connection
 
 
 class S3Client:
@@ -187,6 +187,16 @@ class S3Client:
         except Exception as err:
             print(err)
 
+    async def get_s3_bucket_domain(self) -> dict:
+        try:
+            async with self.get_client() as client:
+                client: S3ClientType
+                response = await client.get_bucket_location(Bucket=self.bucket_name)
+                return response
+        except Exception as err:
+            print(err)
+
+
 
 async def main():
     # Example usage:
@@ -198,15 +208,14 @@ async def main():
     object_name = 'new_imag.jpg'
     async with s3_client.get_client() as client:
         client: S3ClientType
-        response = await client.generate_presigned_post(s3_client.bucket_name, Key=object_name)
-        url = response['url']
-        fields = response['fields']
+        response = await client.get_bucket_website(Bucket=s3_client.bucket_name)
+        print(response)
 
-        with open('new_image.jpg', 'rb') as f:
-            files = {'file': (object_name, f)}
-            http_response = requests.post(url, data=fields, files=files)
-            print(http_response.request)
-            print(f'{url} data={files} files={files}')
+        # with open('new_image.jpg', 'rb') as f:
+        #     files = {'file': (object_name, f)}
+        #     http_response = requests.post(url, data=fields, files=files)
+        #     print(http_response.request)
+        #     print(f'{url} data={files} files={files}')
 
 
 if __name__ == "__main__":

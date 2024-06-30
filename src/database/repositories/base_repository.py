@@ -1,4 +1,4 @@
-from app.database.engine.session_maker import DatabaseSessionManager
+from src.database.engine.session_maker import DatabaseSessionManager
 
 
 class BaseRepository:

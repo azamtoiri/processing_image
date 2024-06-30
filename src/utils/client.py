@@ -1,5 +1,5 @@
-from app.utils.config import S3Connection
-from app.utils.s3_client import S3Client
+from src.utils.config import S3Connection
+from src.utils.s3_client import S3Client
 
 
 def get_s3_client() -> S3Client:

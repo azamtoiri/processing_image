@@ -1,7 +1,7 @@
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
-from app.websocket_manager import websocket_endpoint
+from src.websocket_manager import websocket_endpoint
 
 router = APIRouter()
 

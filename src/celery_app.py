@@ -1,6 +1,6 @@
 from celery import Celery
 
-from app.utils.config import Connection
+from src.utils.config import Connection
 
 celery_app = Celery(
     "tasks",
@@ -16,4 +16,4 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
-import app.tasks
+import src.tasks

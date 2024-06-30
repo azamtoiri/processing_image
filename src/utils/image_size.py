@@ -3,7 +3,7 @@ from io import BytesIO
 from PIL import Image
 
 
-def get_image_size(image_bytes) -> tuple:
+def get_image_size(image_data) -> tuple:
     """
     Функция для получения размеров изображения.
 
@@ -13,8 +13,9 @@ def get_image_size(image_bytes) -> tuple:
     Возвращает:
     tuple: Кортеж из двух значений (ширина, высота) в пикселях.
     """
-    with Image.open(BytesIO(image_bytes)) as img:
+    with Image.open(BytesIO(image_data)) as img:
         width, height = img.size
+        print("image original", width, height)
         return width, height
 
 

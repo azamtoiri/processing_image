@@ -8,6 +8,7 @@ from src.routes.images import schemas
 from src.utils.client import get_s3_client
 from src.utils.config import components, S3Connection
 from src.utils.image_size import get_image_size
+from src.websocket_manager import manager
 
 logger = get_task_logger(__name__)
 
@@ -48,6 +49,9 @@ def process_image_task(image_id, project_id, image_data):
                 )
 
             await components.repositories_com.image_repository.update_image_status(image_id, schemas.ImageState.done)
+            # Отправка уведомления через WebSocket
+            async with manager.connect(f'ws://localhost:8000/ws/{project_id}') as websocket:
+                await websocket.send(f"Image {image_id} processing done")
             return True
 
         except Exception as e:

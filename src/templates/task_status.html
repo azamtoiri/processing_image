@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block css %}
+<style>
+    .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    input[type="file"],
+    input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-sizing: border-box;
+        font-size: 14px;
+    }
+
+    button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    button:hover {
+        background-color: #45a049;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="container">
+        <h2>Upload Image and Enter Inputs</h2>
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="image">Upload Image:</label>
+                <input type="file" id="image" name="image" accept="image/*">
+            </div>
+            <div class="form-group">
+                <label for="url">Insert URL:</label>
+                <input type="text" id="url" name="url">
+            </div>
+            <div class="form-group">
+                <label for="data">Insert Text:</label>
+                <input type="text" id="data" name="data">
+            </div>
+            <button type="button" onclick="submitForm()">Submit</button>
+        </form>
+    </div>
+
+    <div class="starter-template">
+        <hr>
+        <br>
+        <div>
+            <h3>Tasks</h3>
+        </div>
+    </div>
+    <br><br>
+    <div>
+        <h3>Task Status</h3>
+        <br>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Result</th>
+            </tr>
+            </thead>
+            <tbody id="tasks">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+    <script>
+        function submitForm() {
+            // Get form data
+            let formData = new FormData();
+            let url = document.getElementById('url').value;
+            let imageFile = document.getElementById('image');
+            let data = document.getElementById('data').value;
+            console.log(imageFile.files[0]);
+
+            // Append data to FormData
+            if (imageFile) {
+                formData.append('image', imageFile.files[0]);
+            }
+            if (data) {
+                formData.append('data', data);
+            }
+
+            // Example: Send formData to backend (replace with your actual backend endpoint)
+            fetch(`${url}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                alert('Data submitted successfully!');
+                // Optionally, reset form fields
+                document.getElementById('uploadForm').reset();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error occurred while submitting data.');
+            });
+        }
+    </script>
+{% endblock %}

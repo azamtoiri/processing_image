@@ -1,14 +1,15 @@
 import json
+from pathlib import Path
 
 import requests
-from fastapi import APIRouter, Depends, UploadFile, Body
+from celery.result import AsyncResult
+from fastapi import APIRouter, UploadFile, Body
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.templating import Jinja2Templates
 
 from src.database.engine.session_maker import DatabaseSessionManager
 from src.routes.images import schemas
-from src.routes.websocket import router as websocket_router
 from src.tasks import process_image_task
 from src.utils.client import get_s3_client
 from src.utils.config import Connection
@@ -16,12 +17,21 @@ from src.utils.config import Connection
 router = APIRouter()
 s3_client = get_s3_client()
 
+templates_file_path = Path(__file__).resolve().parent.parent.parent
+templates = Jinja2Templates(directory=f"{templates_file_path}/templates")
+print(templates_file_path)
+
 
 # Зависимость для получения асинхронной сессии БД
 async def get_db():
     db = DatabaseSessionManager(f'{Connection.DATABASE_URL}/{Connection.DATABASE}')
     async with db.session_scope() as db_session:
         yield db_session
+
+
+@router.get('/')
+def image_status(request: Request):
+    return templates.TemplateResponse(name='task_status.html', context={"request": request})
 
 
 @router.post("/", response_model=schemas.ImageUpload, status_code=201)
@@ -51,7 +61,6 @@ async def upload_image(request: Request, filename: str, project_id: int):
 @router.post("/upload/{s3_url}/", status_code=201)
 async def upload_image(
         request: Request, s3_url: str, file: UploadFile = UploadFile(...), data=Body(...),
-        db: AsyncSession = Depends(get_db)
 ):
     # Если файл не jpeg или png выводим ошибку
     if file.content_type not in ["image/jpeg", "image/png"]:
@@ -78,4 +87,12 @@ async def upload_image(
         raise HTTPException(status_code=500, detail=f"Initial server error: {err}")
 
 
-router.include_router(websocket_router)
+@router.get("/task/{task_id}/")
+async def get_task_status(task_id: str):
+    task_result = AsyncResult(task_id)
+    result = {
+        "task_id": task_id,
+        "task_status": task_result.status,
+        "task_result": task_result.result
+    }
+    return JSONResponse(result)

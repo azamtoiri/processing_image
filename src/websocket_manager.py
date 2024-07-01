@@ -9,15 +9,32 @@ router = APIRouter()
 active_websockets: List[WebSocket] = []
 
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+
+manager = ConnectionManager()
+
+
 @router.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int):
-    await websocket.accept()
-    active_websockets.append(websocket)
+    await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            # Обработка данных от клиента, например, отправка сообщений другим клиентам
-            # Или выполнение других операций на основе полученных данных
+            await manager.broadcast(f"You wrote: {data}")
     except WebSocketDisconnect:
-        active_websockets.remove(websocket)
-        # Обработка закрытия соединения
+        manager.disconnect(websocket)
+        await manager.broadcast(f"Client #{client_id} left the chat")
